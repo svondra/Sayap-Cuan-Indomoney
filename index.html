@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>Indomoney Jakarta Bird</title>
+    <style>
+        body {
+            margin: 0; background-color: #b71c1c;
+            display: flex; justify-content: center; align-items: center;
+            height: 100vh; color: white; overflow: hidden; touch-action: none;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        canvas {
+            background: linear-gradient(to bottom, #1a4a4e, #4ec0ca); 
+            border: 6px solid #fff; border-radius: 8px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+            image-rendering: pixelated; /* PIPA RETRO PIXELATED */
+            max-width: 100%; max-height: 90vh;
+            display: block;
+        }
+        /* Style Pop-up Hadiah */
+        #rewardModal {
+            display: none; position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); background: #fff;
+            color: #000; padding: 25px; border-radius: 12px;
+            text-align: center; z-index: 100; width: 85%;
+            box-shadow: 0 0 25px rgba(0,0,0,0.6);
+            border: 4px solid #FFD700;
+        }
+        .modal-btn {
+            background: #b71c1c; color: white; border: none;
+            padding: 12px 18px; margin: 8px; border-radius: 8px;
+            font-weight: bold; cursor: pointer; font-family: sans-serif;
+        }
+        /* Style Tagline */
+        .tagline {
+            font-size: 0.8rem; font-style: italic; color: #555;
+            margin-top: 15px; font-family: sans-serif;
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="gameCanvas" width="360" height="580"></canvas>
+
+<div id="rewardModal">
+    <h2 style="color:#b71c1c; margin-top:0;">SELAMAT! 🇮🇩</h2>
+    <p id="rewardText" style="font-size: 1.1rem; line-height: 1.4;"></p>
+    <button class="modal-btn" onclick="claimReward()">AMBIL ONGKIR</button>
+    <button class="modal-btn" style="background:#555" onclick="continueGame()">LANJUT KE TARGET</button>
+    
+    <div class="tagline">Indomoney: Aman, Cepat, Terpercaya</div>
+</div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d', { alpha: false });
+
+    const birdImg = new Image(); birdImg.src = 'bird.png';
+    const logoImg = new Image(); logoImg.src = 'logo.png';
+
+    let birdY, birdV, pipes, score, frame, gameOver, isPaused, gameStarted, cityX = 0, lastTime = 0;
+    const fpsLimit = 1000 / 60;
+    const gravity = 0.45, jump = -7, birdSize = 55;
+    
+    let currentFormLink = "";
+    let rewardsShown = { 5: false, 10: false, 15: false, 25: false };
+
+    function reset() {
+        birdY = 250; birdV = 0; pipes = []; score = 0; frame = 0; 
+        gameOver = false; isPaused = false; gameStarted = false; cityX = 0;
+        currentFormLink = "";
+        rewardsShown = { 5: false, 10: false, 15: false, 25: false };
+        document.getElementById('rewardModal').style.display = 'none';
+    }
+
+    function drawRealMonas(x, y) {
+        ctx.fillStyle = "#e0e0e0"; ctx.fillRect(x - 30, y + 100, 70, 15); 
+        ctx.fillStyle = "#ffffff"; ctx.beginPath();
+        ctx.moveTo(x - 25, y + 100); ctx.lineTo(x + 35, y + 100);
+        ctx.lineTo(x + 20, y + 85); ctx.lineTo(x - 10, y + 85);
+        ctx.fill();
+        ctx.fillRect(x, y + 20, 10, 65);
+        ctx.fillStyle = "#FFD700"; ctx.beginPath();
+        ctx.moveTo(x + 5, y + 5); ctx.quadraticCurveTo(x + 15, y + 12, x + 5, y + 22);
+        ctx.quadraticCurveTo(x - 5, y + 12, x + 5, y + 5); ctx.fill();
+    }
+
+    function drawJakarta() {
+        cityX -= 0.8; if (cityX < -360) cityX = 0;
+        ctx.save(); ctx.translate(cityX, 0);
+        for (let i = 0; i < 2; i++) {
+            let offset = i * 360;
+            
+            // --- PAPAN REKLAME INDOMONEY (VERSI TIANG PENDEK) ---
+            const sx = offset + 60; const sy = 260; // Turunkan sedikit posisi vertikal papan
+            
+            // Dua Tiang Ramping PENDEK (Metal)
+            ctx.fillStyle = "#444";
+            ctx.fillRect(sx + 10, sy + 45, 6, 25); // Pendekan jadi 25
+            ctx.fillRect(sx + 64, sy + 45, 6, 25); // Pendekan jadi 25
+
+            // Efek Neon Glow Kuning Emas
+            ctx.save();
+            ctx.shadowBlur = 10; ctx.shadowColor = "#FFD700";
+            ctx.fillStyle = "#b71c1c"; ctx.strokeStyle = "#fff"; ctx.lineWidth = 2;
+            ctx.fillRect(sx, sy, 80, 45); ctx.strokeRect(sx, sy, 80, 45);
+            ctx.restore();
+
+            // Tulisan di Papan (Teks Besar & Terbaca)
+            ctx.fillStyle = "white"; ctx.font = "bold 12px Arial";
+            ctx.textAlign = "center"; ctx.fillText("INDO", sx + 40, sy + 18); ctx.fillText("MONEY", sx + 40, sy + 34);
+
+            // GEDUNG & MONAS
+            ctx.fillStyle = "#1e3d41"; ctx.fillRect(offset + 20, 330, 55, 250);
+            ctx.fillStyle = "#FFD700"; ctx.fillRect(offset + 40, 320, 15, 10); 
+            ctx.fillStyle = "#2c5d63"; ctx.fillRect(offset + 250, 310, 70, 270);
+            ctx.fillStyle = "#f9d423";
+            for(let r = 350; r < 580; r += 30) {
+                ctx.fillRect(offset + 30, r, 6, 8); ctx.fillRect(offset + 280, r, 6, 8);
+            }
+            drawRealMonas(offset + 170, 370);
+        }
+        ctx.restore();
+    }
+
+    function drawPipe(p) {
+        // PIPA HIJAU KOTAK-KOTAK PIXELATED (STYLE AWAL)
+        ctx.fillStyle = "#73bf2e";
+        ctx.fillRect(p.x, 0, 55, p.top);
+        ctx.fillRect(p.x, p.top + p.gap, 55, canvas.height);
+        ctx.fillStyle = "#558022"; ctx.fillRect(p.x + 40, 0, 15, p.top);
+        ctx.fillRect(p.x + 40, p.top + p.gap, 15, canvas.height);
+        ctx.strokeStyle = "#000"; ctx.lineWidth = 3;
+        ctx.strokeRect(p.x - 3, p.top - 25, 61, 25);
+        ctx.strokeRect(p.x - 3, p.top + p.gap, 61, 25);
+    }
+
+    function update(timestamp) {
+        const deltaTime = timestamp - lastTime;
+        if (deltaTime >= fpsLimit) {
+            lastTime = timestamp - (deltaTime % fpsLimit);
+            ctx.fillStyle = "#4ec0ca";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            drawJakarta();
+
+            if (gameStarted && !gameOver && !isPaused) {
+                birdV += gravity; birdY += birdV;
+                if (birdY > canvas.height || birdY < 0) triggerGameOver();
+                if (frame++ % 90 === 0) {
+                    let gap = 125; 
+                    const top = Math.random() * (canvas.height - gap - 200) + 80;
+                    pipes.push({ x: canvas.width, top, gap, passed: false });
+                }
+                for (let i = pipes.length - 1; i >= 0; i--) {
+                    let p = pipes[i]; p.x -= 3.6;
+                    drawPipe(p);
+                    if (60 + 18 > p.x && 60 - 18 < p.x + 55) {
+                        if (birdY - 18 < p.top || birdY + 18 > p.top + p.gap) triggerGameOver();
+                    }
+                    if (!p.passed && p.x < 60) {
+                        score++; p.passed = true;
+                        checkRewardTrigger();
+                    }
+                    if (p.x < -60) pipes.splice(i, 1);
+                }
+            } else if (!gameStarted) {
+                birdY = 250 + Math.sin(timestamp / 200) * 10;
+                ctx.fillStyle = "rgba(0,0,0,0.4)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "white"; ctx.font = "bold 22px Arial";
+                ctx.textAlign = "center"; ctx.fillText("KLIK UNTUK MULAI", canvas.width / 2, canvas.height / 2 + 120);
+            } else if (gameOver) {
+                pipes.forEach(drawPipe);
+                ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(0,0,canvas.width,canvas.height);
+                ctx.fillStyle = "white"; ctx.font = "bold 30px Arial";
+                ctx.textAlign = "center"; ctx.fillText("COBA LAGI!", canvas.width / 2, canvas.height / 2 + 80);
+            }
+
+            ctx.drawImage(birdImg, 60 - birdSize/2, birdY - birdSize/2, birdSize, birdSize);
+            
+            // LOGO INDOMONEY (Pusat Perhatian)
+            if (logoImg.complete && logoImg.width > 0) {
+                const logoH = 130; const ratio = logoImg.width / logoImg.height;
+                const logoW = logoH * ratio;
+                ctx.save();
+                // Triks supaya logo tetep halus meskipun canvas pixelated
+                ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+                ctx.shadowBlur = 10; ctx.shadowColor = "rgba(0,0,0,0.5)";
+                ctx.drawImage(logoImg, (canvas.width - logoW) / 2, 10, logoW, logoH);
+                ctx.restore();
+                ctx.fillStyle = "white"; ctx.font = "bold 50px Arial";
+                ctx.textAlign = "center"; ctx.fillText(score, canvas.width / 2, 175);
+            }
+        }
+        requestAnimationFrame(update);
+    }
+
+    function triggerGameOver() { gameOver = true; setTimeout(reset, 1500); }
+    function checkRewardTrigger() {
+        let r = ""; let l = "";
+        if (score === 5 && !rewardsShown[5]) { r = "Diskon 25nt"; l = "https://forms.cloud.microsoft/r/hHKjjf7Rxb"; rewardsShown[5] = true; }
+        else if (score === 10 && !rewardsShown[10]) { r = "Diskon 50nt"; l = "https://forms.cloud.microsoft/r/scikLq4LMR"; rewardsShown[10] = true; }
+        else if (score === 15 && !rewardsShown[15]) { r = "Diskon 75nt"; l = "https://forms.cloud.microsoft/r/jvdzw6Cuu2"; rewardsShown[15] = true; }
+        else if (score === 25) { r = "GRATIS ONGKIR"; l = "https://forms.cloud.microsoft/r/KyvNqtbwNA"; rewardsShown[25] = true; }
+        if (r !== "") { isPaused = true; currentFormLink = l;
+            document.getElementById('rewardText').innerHTML = `Selamat! Anda dapat <b>${r}</b>.<br><br>Mau ambil kupon atau lanjut?`;
+            document.getElementById('rewardModal').style.display = 'block';
+        }
+    }
+    function claimReward() { if (currentFormLink !== "") { window.open(currentFormLink, '_blank'); reset(); } }
+    function continueGame() { isPaused = false; birdV = jump; pipes = []; document.getElementById('rewardModal').style.display = 'none'; }
+
+    const handleAction = (e) => {
+        if (e && e.type === 'keydown' && e.code !== 'Space') return;
+        if (e && e.cancelable) e.preventDefault();
+        if (!gameStarted) { gameStarted = true; birdV = jump; }
+        else if (!gameOver && !isPaused) { birdV = jump; }
+    };
+    window.addEventListener('keydown', handleAction);
+    canvas.addEventListener('mousedown', handleAction);
+    canvas.addEventListener('touchstart', (e) => { handleAction(e); }, { passive: false });
+    birdImg.onload = () => { reset(); requestAnimationFrame(update); };
+</script>
+</body>
+</html>
