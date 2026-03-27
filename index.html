@@ -147,7 +147,7 @@
                 birdV += gravity; birdY += birdV;
                 if (birdY > canvas.height || birdY < 0) triggerGameOver();
                 if (frame++ % 90 === 0) {
-                    let gap = 150; const top = Math.random() * (canvas.height - gap - 200) + 80;
+                    let gap = 110; const top = Math.random() * (canvas.height - gap - 200) + 80;
                     pipes.push({ x: canvas.width, top, gap, passed: false });
                 }
                 for (let i = pipes.length - 1; i >= 0; i--) {
