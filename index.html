@@ -57,7 +57,6 @@
 </head>
 <body>
 <canvas id="gameCanvas" width="360" height="580"></canvas>
-
 <div id="rewardModal">
     <h2 style="color:#b71c1c; margin-top:0;">SELAMAT!</h2>
     <p id="rewardText" style="font-size: 1.1rem; line-height: 1.4;"></p>
@@ -65,13 +64,12 @@
     <button id="continueBtn" class="modal-btn" style="background:#555" onclick="continueGame()">LANJUT KE TARGET</button>
     <div class="tagline">Indomoney: Aman, Cepat, Terpercaya</div>
 </div>
-
 <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d', { alpha: false });
     const birdImg = new Image(); birdImg.src = 'bird.png';
     const logoImg = new Image(); logoImg.src = 'Logo.PNG';
-    
+  
     let birdY = 250, birdV = 0, pipes = [], score = 0, frame = 0;
     let gameOver = false, isPaused = false, gameStarted = false;
     let cityX = 0, lastTime = 0;
@@ -81,10 +79,11 @@
     let airplaneX = -400;
     let balloonX = 290, balloonY = 420;
     let buildingLights = [];
-
     let pipeInterval = 85;
     let pipeSpeed = 3.7;
     const PIPE_GAP = 125;
+
+    let currentFormLink = "";
 
     function reset() {
         birdY = 250; birdV = 0;
@@ -121,6 +120,8 @@
             });
         }
     }
+
+    // ... (All drawing functions remain the same: drawImprovedCloud, drawAirplane, drawBalloon, etc.)
 
     function drawImprovedCloud(x, y, scale, opacity) {
         ctx.save();
@@ -244,20 +245,18 @@
         ctx.shadowColor = "#ffff00";
         ctx.shadowBlur = 30;
         ctx.font = "bold 29px Arial";
-        ctx.fillText("SAYAP CUAN", canvas.width/2, 195);   // dinaikkan
-
+        ctx.fillText("SAYAP CUAN", canvas.width/2, 195);
         ctx.fillStyle = "#ff0033";
         ctx.shadowColor = "#ff0033";
         ctx.shadowBlur = 30;
         ctx.font = "bold 27px Arial";
-        ctx.fillText("INDOMONEY", canvas.width/2, 228);   // dinaikkan
+        ctx.fillText("INDOMONEY", canvas.width/2, 228);
         ctx.shadowBlur = 0;
     }
 
     function drawOpeningScreen() {
         ctx.fillStyle = "rgba(0,0,0,0.65)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-
         if (logoImg.complete) {
             const logoH = 110;
             const ratio = logoImg.width / logoImg.height;
@@ -268,27 +267,23 @@
             ctx.drawImage(logoImg, (canvas.width - logoW)/2, 12, logoW, logoH);
             ctx.restore();
         }
-
         drawGameTitle();
-
         ctx.fillStyle = "white";
         ctx.shadowBlur = 6;
         ctx.shadowColor = "#000";
         ctx.font = "bold 22px Arial";
-        ctx.fillText("ATURAN PERMAINAN", canvas.width/2, 275);   // dinaikkan
-
+        ctx.fillText("ATURAN PERMAINAN", canvas.width/2, 275);
         ctx.font = "bold 17.5px Arial";
         ctx.shadowBlur = 3;
         ctx.fillText("5 poin = Kupon 25 NT", canvas.width/2, 310);
         ctx.fillText("10 poin = Kupon 50 NT", canvas.width/2, 335);
         ctx.fillText("15 poin = Kupon 75 NT", canvas.width/2, 360);
         ctx.fillText("25 poin = Kupon gratis ongkir", canvas.width/2, 385);
-
         ctx.fillStyle = "#ffeb3b";
         ctx.font = "bold 21px Arial";
         ctx.shadowBlur = 12;
         ctx.shadowColor = "#b71c1c";
-        ctx.fillText("TAP UNTUK MEMULAI", canvas.width/2, 445);  // dinaikkan
+        ctx.fillText("TAP UNTUK MEMULAI", canvas.width/2, 445);
         ctx.shadowBlur = 0;
     }
 
@@ -399,7 +394,6 @@
         requestAnimationFrame(update);
     }
 
-    let currentFormLink = "";
     let rewardsShown = { 5: false, 10: false, 15: false, 25: false };
 
     function checkRewardTrigger() {
@@ -416,7 +410,7 @@
             r = "Diskon 75nt"; l = "https://forms.cloud.microsoft/r/jvdzw6Cuu2";
             rewardsShown[15] = true;
         }
-       
+     
         if (r !== "") {
             isPaused = true;
             currentFormLink = l;
@@ -429,6 +423,8 @@
 
     function showFinalReward() {
         isPaused = true;
+        currentFormLink = "https://forms.cloud.microsoft/r/KyvNqtbwNA";   // ← NEW LINK
+
         document.getElementById('rewardText').innerHTML = `SELAMAT!<br>Anda mencapai target akhir!<br><b>GRATIS ONGKIR</b>`;
         document.getElementById('claimBtn').style.display = 'inline-block';
         document.getElementById('continueBtn').style.display = 'none';
