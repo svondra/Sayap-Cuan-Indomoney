@@ -64,12 +64,13 @@
     <button id="continueBtn" class="modal-btn" style="background:#555" onclick="continueGame()">LANJUT KE TARGET</button>
     <div class="tagline">Indomoney: Aman, Cepat, Terpercaya</div>
 </div>
+
 <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d', { alpha: false });
     const birdImg = new Image(); birdImg.src = 'bird.png';
     const logoImg = new Image(); logoImg.src = 'Logo.PNG';
-  
+ 
     let birdY = 250, birdV = 0, pipes = [], score = 0, frame = 0;
     let gameOver = false, isPaused = false, gameStarted = false;
     let cityX = 0, lastTime = 0;
@@ -82,8 +83,48 @@
     let pipeInterval = 85;
     let pipeSpeed = 3.7;
     const PIPE_GAP = 115;
-
     let currentFormLink = "";
+
+    // ==================== PLAY LOGGING SYSTEM ====================
+    window.gameStartTime = null;
+    window.currentSessionId = null;
+
+    const PLAY_LOG_URL = "https://script.google.com/macros/s/AKfycbyErXyRQH4eOjEB6VJYZBTpYAFHLiU0qIaSLuQo-z4_s82ybYEZ2xwOfG-9bhceR_hc/exec";
+
+    function generateSessionId() {
+        return 'sess_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 10);
+    }
+
+    async function sendPlayLog(score, reachedTarget) {
+        if (!window.currentSessionId) return;
+
+        const logData = {
+            sessionId: window.currentSessionId,
+            score: score,
+            duration: window.gameStartTime ? Math.round((Date.now() - window.gameStartTime) / 1000) : 0,
+            reachedTarget: reachedTarget,
+            dayName: new Intl.DateTimeFormat('id-ID', { weekday: 'long' }).format(new Date()),
+            userAgent: navigator.userAgent.substring(0, 120)
+        };
+
+        try {
+            await fetch(PLAY_LOG_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(logData),
+                mode: 'no-cors'
+            });
+            console.log(`✅ Play logged | Score: ${score} | Target: ${reachedTarget}`);
+        } catch (e) {
+            console.warn("❌ Play log failed", e);
+        }
+    }
+
+    function startNewGame() {
+        window.gameStartTime = Date.now();
+        window.currentSessionId = generateSessionId();
+        console.log("🎮 New game started | Session:", window.currentSessionId);
+    }
 
     function reset() {
         birdY = 250; birdV = 0;
@@ -96,6 +137,10 @@
         pipeSpeed = 3.7;
         rewardsShown = { 5: false, 10: false, 15: false, 25: false };
         document.getElementById('rewardModal').style.display = 'none';
+        
+        // Reset logging variables
+        window.gameStartTime = null;
+        window.currentSessionId = null;
     }
 
     function initClouds() {
@@ -120,8 +165,6 @@
             });
         }
     }
-
-    // ... (All drawing functions remain the same: drawImprovedCloud, drawAirplane, drawBalloon, etc.)
 
     function drawImprovedCloud(x, y, scale, opacity) {
         ctx.save();
@@ -410,7 +453,7 @@
             r = "Diskon 75nt"; l = "https://forms.cloud.microsoft/r/jvdzw6Cuu2";
             rewardsShown[15] = true;
         }
-     
+    
         if (r !== "") {
             isPaused = true;
             currentFormLink = l;
@@ -423,12 +466,18 @@
 
     function showFinalReward() {
         isPaused = true;
-        currentFormLink = "https://forms.cloud.microsoft/r/KyvNqtbwNA";   // ← NEW LINK
-
+        sendPlayLog(score, true);
+        currentFormLink = "https://forms.cloud.microsoft/r/KyvNqtbwNA";
         document.getElementById('rewardText').innerHTML = `SELAMAT!<br>Anda mencapai target akhir!<br><b>GRATIS ONGKIR</b>`;
         document.getElementById('claimBtn').style.display = 'inline-block';
         document.getElementById('continueBtn').style.display = 'none';
         document.getElementById('rewardModal').style.display = 'block';
+    }
+
+    function triggerGameOver() {
+        gameOver = true;
+        sendPlayLog(score, false);
+        setTimeout(reset, 1600);
     }
 
     function claimReward() {
@@ -443,16 +492,13 @@
         document.getElementById('rewardModal').style.display = 'none';
     }
 
-    function triggerGameOver() {
-        gameOver = true;
-        setTimeout(reset, 1600);
-    }
-
     const handleAction = (e) => {
         if (e && e.type === 'keydown' && e.code !== 'Space') return;
         if (e && e.cancelable) e.preventDefault();
+
         if (!gameStarted) {
             gameStarted = true;
+            startNewGame();
             birdV = jump;
             initBuildingLights();
         } else if (!gameOver && !isPaused) {
